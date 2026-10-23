@@ -4,8 +4,6 @@ Static security review of `NightCoop-0.1.0-beta.1.zip`, a closed-source Cyberpun
 
 **Verdict: no malicious code found.** The bundled RED4ext files are genuine, and nothing in `NightCoop.dll` steals data, persists, downloads or runs payloads, or reads data unrelated to the game.
 
-> Private repo. `pseudocode/` is decompiler output of a third-party closed-source binary, kept for personal reference only. Do not redistribute it.
-
 ## Package contents
 
 | File | SHA-256 | Notes |
