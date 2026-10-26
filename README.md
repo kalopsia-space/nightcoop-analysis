@@ -1,18 +1,40 @@
-# NightCoop 0.1.0-beta.1 — security analysis
+# NightCoop — security analysis & reverse-engineering notes
 
-Static security review of `NightCoop-0.1.0-beta.1.zip`, a closed-source Cyberpunk 2077 co-op mod built on RED4ext, done before running it.
+> An independent, from-the-binaries study of **NightCoop**, a closed-source Cyberpunk 2077
+> co-op mod built on RED4ext. Everything here was reconstructed by static reverse engineering
+> of the shipped DLLs — before running the mod — and cross-checked against the mod's
+> open-source hub server.
 
-**Verdict: no malicious code found.** The bundled RED4ext files are genuine, and nothing in `NightCoop.dll` steals data, persists, downloads or runs payloads, or reads data unrelated to the game.
+### ✅ Verdict: no malicious code
 
-> A newer build, **0.1.1-beta.2**, has since been analysed. Its changes (chiefly a new co-op Rewards system) are covered in [docs/6 — What changed in 0.1.1-beta.2](docs/6_changes_0.1.1-beta.2.md).
+The bundled RED4ext files are genuine (byte-identical to the official v1.30.0 release), and
+nothing in `NightCoop.dll` steals data, persists, downloads or runs payloads, hides APIs, or
+touches anything unrelated to the game. Two builds have been analysed — **0.1.0-beta.1** and
+**0.1.1-beta.2** — and both are clean.
+
+What it *is*: a peer-to-peer co-op layer (star topology, host-authoritative) that shares one
+player's world and story with up to seven partners over an end-to-end-encrypted transport,
+relayed by a lobby hub at `hub.nightcoop.net`. The full mechanism is documented below.
+
+---
+
+## Start here
+
+| If you want… | Go to |
+|---|---|
+| The one-page tour of how co-op works | [Overview](docs/00_overview.md) |
+| The security bottom line (findings + severities) | [Security audit summary](docs/SECURITY_AUDIT.md) |
+| Proof the DLL isn't doing anything nasty | [Capability triage](docs/capability_triage.md) |
+| What's new in the latest build | [0.1.1-beta.2 changes](docs/6_changes_0.1.1-beta.2.md) |
+| A specific subsystem | the [functional writeups](#functional-analysis) below |
 
 ## Documentation
 
-Full writeups live in [`docs/`](docs/). Start with the overview, then the per-area functional writeups; the lettered files are the focused security audits.
+All writeups live in [`docs/`](docs/).
 
-**Functional analysis**
+#### Functional analysis
 
-- [How the whole thing works — overview](docs/00_overview.md) — architecture, hub ↔ client, the full feature tour
+- [**Overview** — how the whole thing works](docs/00_overview.md) — architecture, hub ↔ client, the full feature tour
 - [1 · Networking & session layer](docs/1_network_session.md) — transports, direct path, session layer, hub client, co-op menu
 - [2 · The remote partner (avatar)](docs/2_players.md) — body, state, animation, look, effects, hit shapes
 - [3 · Combat, NPCs, vehicles & police](docs/3_combat_npcs_vehicles.md) — NPC ownership, damage, downed/revive, PvP, vehicles, destruction
@@ -20,99 +42,56 @@ Full writeups live in [`docs/`](docs/). Start with the overview, then the per-ar
 - [5 · Lifecycle, saves, loot & infrastructure](docs/5_lifecycle_world.md) — startup/hooking, save sharing, items/loot, world rules, config files, Add-on API
 - [6 · What changed in 0.1.1-beta.2](docs/6_changes_0.1.1-beta.2.md) — the Rewards system, lag catch-up, and the diff from 0.1.0-beta.1
 
-**Security audits**
+#### Security
 
-- [Security audit — summary](docs/SECURITY_AUDIT.md) — consolidated findings and severities
+- [**Security audit** — summary](docs/SECURITY_AUDIT.md) — consolidated findings and severities (no critical/high)
+- [Capability triage](docs/capability_triage.md) — the pre-run malware triage behind the "no malicious code" verdict
 - [Audit A · Network-message deserialization](docs/A_net_deserializers.md) — host/peer → client parsing
 - [Audit B · Save splice, transfer framing, loot ledger](docs/B_save_splice_loot.md)
 - [Audit C · Files, paths, config parsers, logs, clipboard](docs/C_files_paths.md)
 - [Audit D · Crypto / authentication / logic](docs/D_crypto_auth.md)
 - [Audit E · Hub server (defensive)](docs/E_hub_server.md)
 
-## Package contents
+## What was analysed
 
-| File | SHA-256 | Notes |
-|---|---|---|
-| `bin/x64/winmm.dll` | `22690f3ac5efbfa825b758028f114d0e7d83833160716f199c56056db01fc8be` | Identical to official RED4ext v1.30.0 |
-| `red4ext/RED4ext.dll` | `59309a78a9606481d13f87e8fbf9ea9c0b735115389ded0295537180c9e52511` | Identical to official RED4ext v1.30.0 |
-| `red4ext/LICENSE.txt` | `a0b08b28ae3931a5a41a1788aac6c7a391513bfc3599272021ea5b2c1af2f6f6` | Identical to official |
-| `red4ext/THIRD_PARTY_LICENSES.txt` | `b49e3d32f961c21e0b15f4c9b11da9455d7c9905a457b1dfa88504f6592220ff` | Identical to official |
-| `red4ext/plugins/NightCoop/NightCoop.dll` | `6d22c0c1b70a3d79df4127a273f9e33198583698300086cd4f8f3e9f9e48adb8` | The mod itself (analysed below) |
+Two shipped packages. Only `NightCoop.dll` differs between them; the three RED4ext files are
+byte-identical across both builds and to the official [RED4ext v1.30.0](https://github.com/wopss/RED4ext/releases/tag/v1.30.0).
 
-The RED4ext files were compared against [`red4ext-1.30.0.zip`](https://github.com/wopss/RED4ext/releases/tag/v1.30.0) from the official GitHub release (asset digest `sha256:3a72225c…c0b0`). Because `winmm.dll` is a proxy DLL the game loads automatically, this check matters most.
+| Build | `NightCoop.dll` SHA-256 | Compiled (UTC) | Size |
+|---|---|---|---|
+| 0.1.0-beta.1 | `6d22c0c1b70a3d79df4127a273f9e33198583698300086cd4f8f3e9f9e48adb8` | 2026-10-23 14:26 | 15.6 MB |
+| 0.1.1-beta.2 | `9b07bb769013ef4a9f91b1b547ffb4929d5845ac63383892e3151895281e40bc` | 2026-10-24 15:16 | 16.1 MB |
 
-## NightCoop.dll overview
+Per-file hashes and the RED4ext comparison are in the [capability triage](docs/capability_triage.md).
 
-- PE32+ x64 DLL, unsigned, no PDB, no overlay, no embedded PE files.
-- Compiled 2026-10-23 14:26:27 UTC, about 30 minutes before the announced open-beta release (18:00 MSK). The internal build ID is `a7c537d`, and an embedded source path is `F:\files\cyberpunk\nightcoop-port25\src\…`.
-- Exports: `Main`, `Query`, `Supports`, `RegisterTypes`, `PostRegisterTypes`, `NightCoopAddonApi` (the standard RED4ext plugin interface plus an add-on API for a companion "NightReplay" plugin).
-- 19,538 functions, all decompiled with Ghidra 12.1.2 (0 failures).
+## Key findings at a glance
 
-## Findings by capability
-
-### Absent entirely
-
-Each of these was searched for in the import table, in the strings, and across all 19,538 decompiled functions:
-
-- Process creation: `CreateProcess`, `ShellExecute`, `WinExec`, `system()`.
-- Injection: `WriteProcessMemory`, `VirtualAllocEx`, `CreateRemoteThread`, `OpenProcess`, `SetWindowsHookEx`.
-- HTTP or download APIs: WinHTTP, WinINet, `URLDownloadToFile`.
-- Executable memory: no `VirtualAlloc`, and no `VirtualProtect` call with a `PAGE_EXECUTE_*` flag.
-- API hiding: no PEB/TEB walking, no ROR13 or export-table hashing, no raw `syscall`.
-- String obfuscation: no XOR-decode loops beyond normal crypto.
-- Credential theft: no `CryptUnprotectData`, and no references to browsers, Discord, Telegram, wallets, tokens or cookies.
-- Persistence: no registry writes, no Startup-folder GUIDs, no scheduled tasks.
-- Environment snooping: no `getenv` of `USERNAME`, `APPDATA`, `USERPROFILE` and similar.
-
-### Present, with what each one does
-
-| Capability | Where | What it does |
-|---|---|---|
-| `VirtualProtect` | `FUN_18090f7b0` | 8-byte pointer-swap hook helper: set RW, write one pointer, restore the old protection. The other two call sites are C runtime code. |
-| Registry | `FUN_1809f95c0` | Reads only `SYSTEM\CurrentControlSet\Control\LeapSecondInformation` (MSVC STL `<chrono>`). |
-| `LoadLibrary` / `GetProcAddress` | 36 sites | Resolves `dbghelp!MiniDumpWriteDump/StackWalk64` (crash dumps), `RED4ext_ResolveAddress`, `ntdll!wine_get_version` (Wine detection), `REDGalaxy64!CloudStorage` (GOG cloud saves), `shell32!SHGetKnownFolderPath`, `kernel32!SetThreadDescription`, and ICU `ucal_*` (timezones). |
-| Known folders | `FUN_180680a80` | Only `FOLDERID_SavedGames` → `CD Projekt Red\Cyberpunk 2077` (the game's save folder). |
-| File writes | `FUN_18069a7a0`, `FUN_18090f820`, `FUN_180104670`, `FUN_1800f4640` | Atomic save writes (`.nightcoop.tmp` → `MoveFileExW`), its own config and state files, logs, crash minidumps. |
-| Files read | — | Its own config (`switches.txt`, `hub.txt`, `servers.txt`, `name.txt`, …) and game saves (`sav.dat`). |
-| Clipboard | `FUN_180897300` ← coop menu `FUN_1808a2e70` | Pasting and copying invite codes, nicknames and addresses. |
-| Keyboard | 14 functions | Every one first checks `FUN_18060a2f0`: the foreground window's PID must equal the game's PID. Only specific hotkeys and menu text entry (`ToUnicodeEx` for typed characters) are polled. This is not a keylogger. |
-| `SuspendThread` / `GetThreadContext` / `ReadProcessMemory` / Toolhelp | `FUN_1800f8ac0` and similar | In-process hang and crash reporter: stack walks and module lists written to local logs and minidumps. No upload path was found. |
-| `TerminateProcess` | 5 sites | RED4ext SDK version-mismatch abort and CRT fatal-error paths. |
-| `Main` | `0x1809eb920` | Logs the version, registers its types with RED4ext, and initialises about 150 game subsystems. No startup side effects beyond that. |
-
-### Network
-
-- All outbound traffic goes through a single `WSASendTo` call site (`FUN_180018cc0`), which is called by 10 netcode functions.
-- **Lobby/relay hub:** `hub.nightcoop.net`. Its certificate is pinned and signed by the project.
-- **STUN / NAT traversal:** `stun.l.google.com`, `stun.cloudflare.com`, `global.stun.twilio.com`, `stun.nextcloud.com`, and UPnP SSDP on `239.255.255.250:1900` (read-only `GetExternalIPAddress`; no `AddPortMapping`). These run only in the on-demand `NightCoopNetCheck` diagnostic.
-- **Local-IP discovery:** a UDP `connect` to `8.8.8.8` and `2001:4860:4860::8888` (no payload sent).
-- **Peer links:** X25519 key exchange with XChaCha20-Poly1305 (`net_crypto`).
-- **Data shared:** game state, nickname, chat, and the host's save file, which is sent to partners by design. The hub and peers see your IP address.
-
-### Minor notes (not malicious)
-
-- No beta expiry: the only "it expired on {}" string belongs to the hub certificate check (`FUN_180041d80`).
-- Phantom Liberty is enabled when its files are present, which skips the store ownership check (`GameServices` step).
-
-## Limitations
-
-- This is static analysis of decompiler output, not original source, and the mod was never executed.
-- Indirect calls through game vtables and function pointers can't be followed fully by static analysis.
-- The 69 MB of pseudocode was scanned with patterns, and every sensitive call site was hand-reviewed. Not every line was read.
-- Server-side behaviour of `hub.nightcoop.net` is out of scope.
-
-See [`docs/00_overview.md`](docs/00_overview.md) for a full functional analysis of the client together with the open-source hub, and the [Documentation](#documentation) index above for every writeup.
+- **Clean binary.** No process creation, injection, HTTP/download, executable memory, API hiding,
+  string obfuscation, credential theft, persistence, or environment snooping — searched across all
+  ~20k decompiled functions. [→ triage](docs/capability_triage.md)
+- **The capabilities it *does* use are game-shaped:** reads/writes the game's save folder and its own
+  config, crash minidumps, clipboard for invite codes, and PID-gated hotkeys (not a keylogger).
+- **Networking is encrypted and hub-mediated.** Peer links use X25519 + XChaCha20-Poly1305; the hub
+  (`hub.nightcoop.net`) is pinned. No critical or high-severity issue, and no memory-safety bug, on
+  any surface. [→ audit summary](docs/SECURITY_AUDIT.md)
+- **Privacy to know about:** the host's save is sent to guests by design, and the hub and peers see
+  your IP. Direct-IP (hub-less) sessions are encrypted but unauthenticated.
+- **0.1.1-beta.2 adds** a co-op Rewards system (kills/quest rewards shared through the game's own
+  grant path) plus lag/scene catch-up tuning — no new capabilities. [→ changes](docs/6_changes_0.1.1-beta.2.md)
 
 ## Repository layout
 
 ```
-pseudocode/                 Ghidra decompilation of NightCoop.dll 0.1.0-beta.1, split by address range (~8 MB per file)
+docs/                       The writeups indexed above (functional analysis + security audits)
+pseudocode/                 Ghidra decompilation of NightCoop.dll 0.1.0-beta.1, split by address range (~8 MB/file)
 pseudocode-0.1.1-beta.2/    Ghidra decompilation of NightCoop.dll 0.1.1-beta.2 (same format)
-tools/        DumpAll.java  - Ghidra headless script that decompiles every function
-              scan.py       - API-usage and malware-pattern scan over the pseudocode
-              show.py       - print matching lines (with context) from chosen functions
-              xref.py       - IAT call-site finder over objdump output, resolving string arguments
+tools/                      DumpAll.java — Ghidra headless script that decompiles every function
+                            scan.py      — API-usage and malware-pattern scan over the pseudocode
+                            show.py      — print matching lines (with context) from chosen functions
+                            xref.py      — IAT call-site finder over objdump output, resolving string arguments
 ```
+
+> `pseudocode/` is decompiler output of a third-party closed-source binary, kept for reference.
 
 ### Reproducing
 
@@ -125,3 +104,10 @@ python3 -I tools/show.py all.c 18090f7b0,18060a2f0      # dump specific function
 objdump -d --no-show-raw-insn -M intel NightCoop.dll > dis.txt
 python3 -I tools/xref.py NightCoop.dll dis.txt RegOpenKeyExW,LoadLibraryW 14 5
 ```
+
+## Scope & limitations
+
+Static analysis of decompiler output and strings — the mod was never executed. Indirect calls
+through game vtables can't be fully followed; sensitive call sites were hand-reviewed but not every
+line of the ~69 MB pseudocode was read; and the server-side behaviour of `hub.nightcoop.net` is out
+of scope. Details per writeup.
