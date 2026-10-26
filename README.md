@@ -4,6 +4,31 @@ Static security review of `NightCoop-0.1.0-beta.1.zip`, a closed-source Cyberpun
 
 **Verdict: no malicious code found.** The bundled RED4ext files are genuine, and nothing in `NightCoop.dll` steals data, persists, downloads or runs payloads, or reads data unrelated to the game.
 
+> A newer build, **0.1.1-beta.2**, has since been analysed. Its changes (chiefly a new co-op Rewards system) are covered in [docs/6 — What changed in 0.1.1-beta.2](docs/6_changes_0.1.1-beta.2.md).
+
+## Documentation
+
+Full writeups live in [`docs/`](docs/). Start with the overview, then the per-area functional writeups; the lettered files are the focused security audits.
+
+**Functional analysis**
+
+- [How the whole thing works — overview](docs/00_overview.md) — architecture, hub ↔ client, the full feature tour
+- [1 · Networking & session layer](docs/1_network_session.md) — transports, direct path, session layer, hub client, co-op menu
+- [2 · The remote partner (avatar)](docs/2_players.md) — body, state, animation, look, effects, hit shapes
+- [3 · Combat, NPCs, vehicles & police](docs/3_combat_npcs_vehicles.md) — NPC ownership, damage, downed/revive, PvP, vehicles, destruction
+- [4 · Story, quests & world sync](docs/4_story_world.md) — quest "led" mode, scenes, dialogue votes, phone, braindance, time and pause
+- [5 · Lifecycle, saves, loot & infrastructure](docs/5_lifecycle_world.md) — startup/hooking, save sharing, items/loot, world rules, config files, Add-on API
+- [6 · What changed in 0.1.1-beta.2](docs/6_changes_0.1.1-beta.2.md) — the Rewards system, lag catch-up, and the diff from 0.1.0-beta.1
+
+**Security audits**
+
+- [Security audit — summary](docs/SECURITY_AUDIT.md) — consolidated findings and severities
+- [Audit A · Network-message deserialization](docs/A_net_deserializers.md) — host/peer → client parsing
+- [Audit B · Save splice, transfer framing, loot ledger](docs/B_save_splice_loot.md)
+- [Audit C · Files, paths, config parsers, logs, clipboard](docs/C_files_paths.md)
+- [Audit D · Crypto / authentication / logic](docs/D_crypto_auth.md)
+- [Audit E · Hub server (defensive)](docs/E_hub_server.md)
+
 ## Package contents
 
 | File | SHA-256 | Notes |
@@ -59,14 +84,14 @@ Each of these was searched for in the import table, in the strings, and across a
 
 - All outbound traffic goes through a single `WSASendTo` call site (`FUN_180018cc0`), which is called by 10 netcode functions.
 - **Lobby/relay hub:** `hub.nightcoop.net`. Its certificate is pinned and signed by the project.
-- **STUN / NAT traversal:** `stun.l.google.com`, `stun.cloudflare.com`, `global.stun.twilio.com`, `stun.nextcloud.com`, and UPnP SSDP on `239.255.255.250:1900`, which may open a port on the router.
+- **STUN / NAT traversal:** `stun.l.google.com`, `stun.cloudflare.com`, `global.stun.twilio.com`, `stun.nextcloud.com`, and UPnP SSDP on `239.255.255.250:1900` (read-only `GetExternalIPAddress`; no `AddPortMapping`). These run only in the on-demand `NightCoopNetCheck` diagnostic.
 - **Local-IP discovery:** a UDP `connect` to `8.8.8.8` and `2001:4860:4860::8888` (no payload sent).
 - **Peer links:** X25519 key exchange with XChaCha20-Poly1305 (`net_crypto`).
 - **Data shared:** game state, nickname, chat, and the host's save file, which is sent to partners by design. The hub and peers see your IP address.
 
 ### Minor notes (not malicious)
 
-- The beta has a built-in expiry date ("it expired on {}").
+- No beta expiry: the only "it expired on {}" string belongs to the hub certificate check (`FUN_180041d80`).
 - Phantom Liberty is enabled when its files are present, which skips the store ownership check (`GameServices` step).
 
 ## Limitations
@@ -76,10 +101,13 @@ Each of these was searched for in the import table, in the strings, and across a
 - The 69 MB of pseudocode was scanned with patterns, and every sensitive call site was hand-reviewed. Not every line was read.
 - Server-side behaviour of `hub.nightcoop.net` is out of scope.
 
+See [`docs/00_overview.md`](docs/00_overview.md) for a full functional analysis of the client together with the open-source hub, and the [Documentation](#documentation) index above for every writeup.
+
 ## Repository layout
 
 ```
-pseudocode/   Ghidra 12.1.2 decompilation of NightCoop.dll, split by address range (~8 MB per file)
+pseudocode/                 Ghidra decompilation of NightCoop.dll 0.1.0-beta.1, split by address range (~8 MB per file)
+pseudocode-0.1.1-beta.2/    Ghidra decompilation of NightCoop.dll 0.1.1-beta.2 (same format)
 tools/        DumpAll.java  - Ghidra headless script that decompiles every function
               scan.py       - API-usage and malware-pattern scan over the pseudocode
               show.py       - print matching lines (with context) from chosen functions
