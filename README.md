@@ -51,6 +51,7 @@ All writeups live in [`docs/`](docs/).
 - [Audit C · Files, paths, config parsers, logs, clipboard](docs/C_files_paths.md)
 - [Audit D · Crypto / authentication / logic](docs/D_crypto_auth.md)
 - [Audit E · Hub server (defensive)](docs/E_hub_server.md)
+- [Audit F · RCE, fuzzing & obfuscation review (0.1.1-beta.2)](docs/F_rce_fuzzing_0.1.1-beta.2.md) — reward-message & decompressor memory safety, a libFuzzer run, a packing/obfuscation sweep, and an honest residual-risk statement
 
 ## What was analysed
 
@@ -89,6 +90,7 @@ tools/                      DumpAll.java — Ghidra headless script that decompi
                             scan.py      — API-usage and malware-pattern scan over the pseudocode
                             show.py      — print matching lines (with context) from chosen functions
                             xref.py      — IAT call-site finder over objdump output, resolving string arguments
+                            fuzz/        — libFuzzer harnesses for attacker-reachable parsers (see Audit F)
 ```
 
 > `pseudocode/` is decompiler output of a third-party closed-source binary, kept for reference.

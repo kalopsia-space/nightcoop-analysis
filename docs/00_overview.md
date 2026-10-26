@@ -11,7 +11,7 @@ This combines the official open-source hub server ([Twenfys/nightcoop-hub](https
 | [`5_lifecycle_world.md`](5_lifecycle_world.md) | startup and hooking, save sharing, items/loot, world rules, config files, Add-on API |
 | [`6_changes_0.1.1-beta.2.md`](6_changes_0.1.1-beta.2.md) | what changed in build 0.1.1-beta.2: the co-op Rewards system, lag catch-up, diff from 0.1.0-beta.1 |
 
-Focused security work is in [`SECURITY_AUDIT.md`](SECURITY_AUDIT.md) (summary), [`capability_triage.md`](capability_triage.md) (pre-run malware triage of the DLL), and the audits [`A_net_deserializers.md`](A_net_deserializers.md), [`B_save_splice_loot.md`](B_save_splice_loot.md), [`C_files_paths.md`](C_files_paths.md), [`D_crypto_auth.md`](D_crypto_auth.md), [`E_hub_server.md`](E_hub_server.md).
+Focused security work is in [`SECURITY_AUDIT.md`](SECURITY_AUDIT.md) (summary), [`capability_triage.md`](capability_triage.md) (pre-run malware triage of the DLL), and the audits [`A_net_deserializers.md`](A_net_deserializers.md), [`B_save_splice_loot.md`](B_save_splice_loot.md), [`C_files_paths.md`](C_files_paths.md), [`D_crypto_auth.md`](D_crypto_auth.md), [`E_hub_server.md`](E_hub_server.md), and [`F_rce_fuzzing_0.1.1-beta.2.md`](F_rce_fuzzing_0.1.1-beta.2.md) (RCE/fuzzing/obfuscation review of 0.1.1-beta.2).
 
 ## The hub matches this client
 
